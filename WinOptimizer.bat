@@ -1,15 +1,17 @@
 @echo off
 setlocal EnableDelayedExpansion
-title PC Optimizer Ultimate v2 - Aggressive Edition
+title PC Optimizer Ultimate v3 - Aggressive Edition
 color 0A
 chcp 65001 >nul
 
 :: ============================================================
-::  WIN OPTIMIZER 
+::  PC OPTIMIZER ULTIMATE v3 - AGGRESSIVE EDITION
 ::  Universale Windows 10/11 - 32/64 bit - portatili e fissi
 ::  - Servizi inutili + telemetria + pulizia (modalita sicura)
 ::  - MODALITA AGGRESSIVA: Defender permanentemente OFF,
 ::    SmartScreen OFF, Windows Update completamente OFF
+::  - Opzione 7: attiva/disattiva creazione punti di ripristino
+::    (su PC vecchi con dischi lenti mette TROPPO tempo)
 ::  - Tutto reversibile via RIPRISTINO_OPTIMIZER.bat
 :: ============================================================
 
@@ -22,6 +24,8 @@ if %errorlevel% neq 0 (
 )
 
 set "RESTORE=%~dp0RIPRISTINO_OPTIMIZER.bat"
+set "SKIPRP=%~dp0.skip_restorepoint"
+
 if not exist "%RESTORE%" (
     >"%RESTORE%" echo @echo off
     >>"%RESTORE%" echo title Ripristino servizi PC Optimizer
@@ -34,13 +38,18 @@ if not exist "%RESTORE%" (
 
 echo.
 echo  ============================================================
-echo    PC OPTIMIZER ULTIMATE v2 - AGGRESSIVE EDITION
+echo    PC OPTIMIZER ULTIMATE v3 - AGGRESSIVE EDITION
 echo  ============================================================
 echo   Ripristino disponibile: %RESTORE%
 echo  ============================================================
 echo.
 
 :MENU
+if exist "%SKIPRP%" (
+    set "RPSTATO=DISATTIVATA - non verra creato nessun punto di ripristino"
+) else (
+    set "RPSTATO=ATTIVA - viene creato il punto di ripristino prima delle modifiche"
+)
 echo  ------------------------------------------------------------
 echo   [1] OTTIMIZZAZIONE RAPIDA - tutto il sicuro + pulizia
 echo   [2] MODALITA GUIDATA - scegli categoria per categoria
@@ -49,16 +58,33 @@ echo   [4] Solo servizi EXTRA - Xbox, stampa, biometria, ricerca
 echo   [5] MODALITA AGGRESSIVA - Defender OFF per sempre,
 echo       SmartScreen OFF, Windows Update OFF. Chiede conferma.
 echo   [6] Esegui RIPRISTINO completo adesso
+echo   [7] Creazione punti di ripristino: !RPSTATO!
+echo       cambiala se il PC e vecchio e ci mette troppo
 echo   [0] Esci
 echo  ------------------------------------------------------------
-choice /c 1234560 /n /m "   Cosa vuoi fare? "
-if errorlevel 7 goto :FINE
+choice /c 12345670 /n /m "   Cosa vuoi fare? "
+if errorlevel 8 goto :FINE
+if errorlevel 7 goto :TOGGLERP
 if errorlevel 6 goto :DORIPRISTINO
 if errorlevel 5 goto :AGGRESSIVA
 if errorlevel 4 goto :EXTRA
 if errorlevel 3 goto :PULIZIA
 if errorlevel 2 goto :GUIDATA
 if errorlevel 1 goto :RAPIDA
+
+:TOGGLERP
+if exist "%SKIPRP%" (
+    del /f /q "%SKIPRP%" >nul 2>&1
+    echo  [OK] Creazione punti di ripristino RIATTIVATA.
+) else (
+    >"%SKIPRP%" echo skip
+    echo  [OK] Creazione punti di ripristino DISATTIVATA.
+    echo       Ora le ottimizzazioni partono subito senza attese.
+)
+echo  [i] Nota: il file di ripristino RIPRISTINO_OPTIMIZER.bat
+       continuera a funzionare comunque - quello e indipendente.
+pause
+goto :MENU
 
 :: ============================================================
 :: [1] OTTIMIZZAZIONE RAPIDA
@@ -229,148 +255,4 @@ echo   - Gestisci impostazioni - spegni PROTEZIONE DA
 echo   MANOMISSIONI Tamper Protection.
 echo   Senza questo passo Windows si riattivera tutto da solo.
 echo.
-set /p CONF="   Per confermare digita esattamente SI e premi Invio: "
-if /i not "%CONF%"=="SI" (
-    echo   [!] Conferma non ricevuta. Annullo tutto.
-    color 0A
-    pause
-    goto :MENU
-)
-color 0A
-call :PUNTORIPRISTINO
-
-echo.
-echo  [AGGR 1/4] Windows Defender - disattivazione permanente...
-reg export "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" "%~dp0backup_defender_policy.reg" /y >nul 2>&1
->>"%RESTORE%" echo reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" /v DisableAntiSpyware /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableBehaviorMonitoring /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableOnAccessProtection /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableScanOnRealtimeEnable /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" /v DisableIOAVProtection /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SpynetReporting /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet" /v SubmitSamplesConsent /t REG_DWORD /d 0 /f >nul 2>&1
-powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue" >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\Windows Defender\Windows Defender Cache Maintenance" /disable >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\Windows Defender\Windows Defender Cleanup" /disable >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\Windows Defender\Windows Defender Scheduled Scan" /disable >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\Windows Defender\Windows Defender Verification" /disable >nul 2>&1
-echo  [OK] Policy anti-Defender applicate - permanente.
-
-echo  [AGGR 2/4] SmartScreen completamente OFF...
->>"%RESTORE%" echo reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v SmartScreenEnabled /t REG_SZ /d "On" /f
->>"%RESTORE%" echo reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer" /v SmartScreenEnabled /t REG_SZ /d "On" /f
->>"%RESTORE%" echo reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v EnableSmartScreen /t REG_DWORD /d 1 /f
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v SmartScreenEnabled /t REG_SZ /d "Off" /f >nul 2>&1
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer" /v SmartScreenEnabled /t REG_SZ /d "Off" /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\System" /v EnableSmartScreen /t REG_DWORD /d 0 /f >nul 2>&1
-echo  [OK] SmartScreen disattivato.
-
-echo  [AGGR 3/4] Windows Update completamente OFF...
-reg export "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" "%~dp0backup_wu_policy.reg" /y >nul 2>&1
->>"%RESTORE%" echo reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /f
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 1 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" /v DoNotConnectToWindowsUpdateInternetLocations /t REG_DWORD /d 1 /f >nul 2>&1
-call :DISABLE wuauserv
-call :DISABLE UsoSvc
-reg add "HKLM\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc" /v Start /t REG_DWORD /d 4 /f >nul 2>&1
->>"%RESTORE%" echo reg add "HKLM\SYSTEM\CurrentControlSet\Services\WaaSMedicSvc" /v Start /t REG_DWORD /d 3 /f
-schtasks /change /tn "\Microsoft\Windows\UpdateOrchestrator\Schedule Scan" /disable >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\UpdateOrchestrator\Schedule Wake To Work" /disable >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\UpdateOrchestrator\Universal Orchestrator Start" /disable >nul 2>&1
-schtasks /change /tn "\Microsoft\Windows\WindowsUpdate\Scheduled Start" /disable >nul 2>&1
-echo  [OK] Windows Update spento - servizi, task pianificati e policy.
-
-echo  [AGGR 4/4] Servizi pesanti vari...
-call :DISABLE SysMain
-call :DISABLE WSearch
-call :DISABLE DPS
-call :DISABLE WdiSystemHost
-call :DISABLE WdiServiceHost
-call :DISABLE WerSvc
-call :DISABLE WalletService
-call :DISABLE MapsBroker
-echo.
-echo  ============================================================
-echo   MODALITA AGGRESSIVA COMPLETATA!
-echo   Riavvia il PC. Defender NON si riattivera da solo
-echo   perche le policy sono permanenti - a patto che tu abbia
-echo   spento Tamper Protection come al Passaggio 0.
-echo   Ripristino: RIPRISTINO_OPTIMIZER.bat nella stessa cartella.
-echo  ============================================================
-pause
-goto :MENU
-
-:: ============================================================
-:: [6] RIPRISTINO
-:: ============================================================
-:DORIPRISTINO
-echo.
-call "%RESTORE%"
-echo  [OK] Ripristino eseguito. Riavvia il PC.
-pause
-goto :MENU
-
-:: ============================================================
-:: FUNZIONI
-:: ============================================================
-
-:DISABLE
-sc query "%~1" >nul 2>&1
-if !errorlevel! neq 0 (
-    echo   [-] %~1 non presente su questo PC, salto.
-    goto :EOF
-)
-for /f "tokens=3" %%s in ('sc qc "%~1" 2^>nul ^| find "START_TYPE"') do (
-    >>"%RESTORE%" echo sc config "%~1" start= %%s
-    >>"%RESTORE%" echo net start "%~1"
-)
-net stop "%~1" >nul 2>&1
-sc config "%~1" start= disabled >nul 2>&1
-echo   [OK] %~1 DISABILITATO
-goto :EOF
-
-:CHIEDI
-choice /c SN /n /m "  ? %~1 - S/N "
-goto :EOF
-
-:PULIZIA_ONLY
-echo   Pulizia cartella utente TEMP...
-del /f /s /q "%TEMP%\*" >nul 2>&1
-for /d %%d in ("%TEMP%\*") do rd /s /q "%%d" >nul 2>&1
-echo   Pulizia C:\Windows\Temp...
-del /f /s /q "C:\Windows\Temp\*" >nul 2>&1
-for /d %%d in ("C:\Windows\Temp\*") do rd /s /q "%%d" >nul 2>&1
-echo   Pulizia Prefetch...
-del /f /q "C:\Windows\Prefetch\*" >nul 2>&1
-echo   Pulizia cache download Windows Update...
-del /f /s /q "C:\Windows\SoftwareDistribution\Download\*" >nul 2>&1
-echo   Pulizia minidump e tmp...
-del /f /q "C:\Windows\Minidump\*" >nul 2>&1
-del /f /q "%SystemRoot%\*.tmp" >nul 2>&1
-echo   Svuotamento Cestino...
-powershell -Command "Clear-RecycleBin -Force -ErrorAction SilentlyContinue" >nul 2>&1
-echo   Flush DNS...
-ipconfig /flushdns >nul 2>&1
-echo   [OK] Pulizia eseguita.
-goto :EOF
-
-:STARTUP
-reg export "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" "%~dp0backup_run_hkcu.reg" /y >nul 2>&1
-reg export "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" "%~dp0backup_run_hklm.reg" /y >nul 2>&1
-echo   Backup chiavi avvio salvati: backup_run_hkcu.reg / backup_run_hklm.reg
-echo   Voci attuali all'avvio:
-for /f "tokens=1,* delims=" %%a in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" 2^>nul ^| findstr /i /v "HKEY_"') do echo    - %%a
-echo   Disattiva le non essenziali da Task Manager - Avvio.
-goto :EOF
-
-:PUNTORIPRISTINO
-echo  [i] Creazione punto di ripristino - attendi 1-2 minuti...
-powershell -Command "Enable-ComputerRestore -Drive 'C:\' -ErrorAction SilentlyContinue; Checkpoint-Computer -Description 'Prima di PC Optimizer' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue" >nul 2>&1
-echo  [OK] Punto di ripristino creato se la protezione sistema era attiva.
-goto :EOF
-
-:FINE
-endlocal
-exit /b
+set /p CONF="   Per conferm
