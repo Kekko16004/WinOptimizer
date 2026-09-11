@@ -1,16 +1,14 @@
 @echo off
 setlocal EnableDelayedExpansion
-title PC Optimizer Ultimate v2 - Aggressive Edition
+title PC Optimizer Ultimate v3.1 - Aggressive Edition
 color 0A
 chcp 65001 >nul
 
 :: ============================================================
-::  PC OPTIMIZER ULTIMATE v2 - AGGRESSIVE EDITION
+::  PC OPTIMIZER ULTIMATE v3.1 - AGGRESSIVE EDITION
 ::  Universale Windows 10/11 - 32/64 bit - portatili e fissi
-::  - Servizi inutili + telemetria + pulizia (modalita sicura)
-::  - MODALITA AGGRESSIVA: Defender permanentemente OFF,
-::    SmartScreen OFF, Windows Update completamente OFF
-::  - Tutto reversibile via RIPRISTINO_OPTIMIZER.bat
+::  Opzione 7: attiva/disattiva creazione punti di ripristino
+::  Tutto reversibile via RIPRISTINO_OPTIMIZER.bat
 :: ============================================================
 
 net session >nul 2>&1
@@ -22,25 +20,31 @@ if %errorlevel% neq 0 (
 )
 
 set "RESTORE=%~dp0RIPRISTINO_OPTIMIZER.bat"
+set "SKIPRP=%~dp0.skip_restorepoint"
+
 if not exist "%RESTORE%" (
     >"%RESTORE%" echo @echo off
     >>"%RESTORE%" echo title Ripristino servizi PC Optimizer
     >>"%RESTORE%" echo chcp 65001 ^>nul
     >>"%RESTORE%" echo color 0C
     >>"%RESTORE%" echo net session ^>nul 2^>^&1 ^|^| ^(powershell -Command "Start-Process -FilePath '%%~f0' -Verb RunAs" ^& exit /b^)
-    >>"%RESTORE%" echo echo Ripristino in corso...
-    >>"%RESTORE%" echo echo NON chiudere questa finestra.
+    >>"%RESTORE%" echo echo Ripristino in corso... NON chiudere questa finestra.
 )
 
 echo.
 echo  ============================================================
-echo    PC OPTIMIZER ULTIMATE v2 - AGGRESSIVE EDITION
+echo    PC OPTIMIZER ULTIMATE v3.1 - AGGRESSIVE EDITION
 echo  ============================================================
 echo   Ripristino disponibile: %RESTORE%
 echo  ============================================================
 echo.
 
 :MENU
+if exist "%SKIPRP%" (
+    set "RPSTATO=DISATTIVATA - nessun punto di ripristino verra creato"
+) else (
+    set "RPSTATO=ATTIVA - il punto di ripristino verra creato prima delle modifiche"
+)
 echo  ------------------------------------------------------------
 echo   [1] OTTIMIZZAZIONE RAPIDA - tutto il sicuro + pulizia
 echo   [2] MODALITA GUIDATA - scegli categoria per categoria
@@ -49,16 +53,34 @@ echo   [4] Solo servizi EXTRA - Xbox, stampa, biometria, ricerca
 echo   [5] MODALITA AGGRESSIVA - Defender OFF per sempre,
 echo       SmartScreen OFF, Windows Update OFF. Chiede conferma.
 echo   [6] Esegui RIPRISTINO completo adesso
+echo   [7] Creazione punti di ripristino: !RPSTATO!
 echo   [0] Esci
 echo  ------------------------------------------------------------
-choice /c 1234560 /n /m "   Cosa vuoi fare? "
-if errorlevel 7 goto :FINE
+choice /c 12345670 /n /m "   Cosa vuoi fare? "
+if errorlevel 8 goto :FINE
+if errorlevel 7 goto :TOGGLERP
 if errorlevel 6 goto :DORIPRISTINO
 if errorlevel 5 goto :AGGRESSIVA
 if errorlevel 4 goto :EXTRA
 if errorlevel 3 goto :PULIZIA
 if errorlevel 2 goto :GUIDATA
 if errorlevel 1 goto :RAPIDA
+
+:: ============================================================
+:: [7] TOGGLE PUNTI DI RIPRISTINO
+:: ============================================================
+:TOGGLERP
+if exist "%SKIPRP%" (
+    del /f /q "%SKIPRP%" >nul 2>&1
+    echo  [OK] Creazione punti di ripristino RIATTIVATA.
+) else (
+    >"%SKIPRP%" echo skip
+    echo  [OK] Creazione punti di ripristino DISATTIVATA.
+    echo       Ora le ottimizzazioni partono subito senza attese.
+    echo       Il ripristino resta garantito da RIPRISTINO_OPTIMIZER.bat.
+)
+pause
+goto :MENU
 
 :: ============================================================
 :: [1] OTTIMIZZAZIONE RAPIDA
@@ -165,7 +187,7 @@ if errorlevel 1 (
     powercfg /setactive SCHEME_MIN >nul 2>&1
     echo   [OK] Piano energetico attivato se disponibile.
 )
-call :CHIEDI "Disabilitare app all'avvio non essenziali - guidedo con Task Manager"
+call :CHIEDI "Disabilitare app all'avvio non essenziali - guidato con Task Manager"
 if errorlevel 1 call :STARTUP
 call :CHIEDI "Pulire file temporanei e cache adesso"
 if errorlevel 1 call :PULIZIA_ONLY
@@ -366,6 +388,11 @@ echo   Disattiva le non essenziali da Task Manager - Avvio.
 goto :EOF
 
 :PUNTORIPRISTINO
+if exist "%SKIPRP%" (
+    echo  [i] Creazione punto di ripristino DISATTIVATA - salto.
+    echo      Il ripristino resta garantito da RIPRISTINO_OPTIMIZER.bat
+    goto :EOF
+)
 echo  [i] Creazione punto di ripristino - attendi 1-2 minuti...
 powershell -Command "Enable-ComputerRestore -Drive 'C:\' -ErrorAction SilentlyContinue; Checkpoint-Computer -Description 'Prima di PC Optimizer' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue" >nul 2>&1
 echo  [OK] Punto di ripristino creato se la protezione sistema era attiva.
